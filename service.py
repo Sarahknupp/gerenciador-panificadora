@@ -1,23 +1,21 @@
-from datetime import datetime
+from datetime import datetime, date
 
-vendas = []
+estoque = []
 
-def registrar_venda(data):
-    venda = data.copy()
-    venda["id"] = len(vendas) + 1
-    venda["data"] = datetime.now().isoformat()
-    vendas.append(venda)
-    return venda
+def registrar_produto(data):
+    produto = data.copy()
+    produto["id"] = len(estoque) + 1
+    produto["data_registro"] = datetime.now().isoformat()
+    estoque.append(produto)
+    return produto
 
-def listar_vendas():
-    return vendas
+def listar_estoque():
+    return estoque
 
-def filtrar_vendas(data_min=None, pagamento=None, valor_min=None):
-    filtradas = vendas
-    if data_min:
-        filtradas = [v for v in filtradas if v["data"] >= data_min]
-    if pagamento:
-        filtradas = [v for v in filtradas if v["forma_pagamento"] == pagamento]
-    if valor_min:
-        filtradas = [v for v in filtradas if v["total"] >= valor_min]
-    return filtradas
+def listar_alertas():
+    hoje = date.today()
+    alertas = {
+        "baixo_estoque": [p for p in estoque if p["quantidade"] < 5],
+        "vencidos": [p for p in estoque if p.get("validade") and p["validade"] < hoje.isoformat()]
+    }
+    return alertas

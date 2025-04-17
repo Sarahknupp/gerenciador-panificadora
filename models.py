@@ -1,14 +1,9 @@
 from pydantic import BaseModel
-from typing import List
+from typing import Optional
+from datetime import date
 
-class ItemVenda(BaseModel):
+class ProdutoEstoque(BaseModel):
     nome: str
-    valor: float
+    tipo: str  # produção ou revenda
     quantidade: int
-
-class Venda(BaseModel):
-    itens: List[ItemVenda]
-    desconto: float
-    forma_pagamento: str
-    valor_pago: float
-    data: str
+    validade: Optional[date] = None

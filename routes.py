@@ -1,32 +1,35 @@
-from fastapi import APIRouter, Query
-from fastapi.responses import JSONResponse, FileResponse
-from .service import registrar_venda, listar_vendas, filtrar_vendas
-import csv, json, tempfile
+from fastapi import APIRouter
+from financeiro.service import listar_movimentacoes
+from pdv.service import listar_vendas
+from estoque.service import listar_estoque
 
-router = APIRouter(prefix="/vendas")
+router = APIRouter(prefix="/dashboard")
 
-@router.post("")
-def nova_venda(venda: dict):
-    return registrar_venda(venda)
+@router.get("/resumo")
+def get_resumo_dashboard():
+    # Total caixa (financeiro)
+    caixa = sum(m['valor'] if m['tipo'] == 'entrada' else -m['valor'] for m in listar_movimentacoes())
 
-@router.get("")
-def historico_vendas(
-    data_min: str = Query(None),
-    pagamento: str = Query(None),
-    valor_min: float = Query(None)
-):
-    return filtrar_vendas(data_min, pagamento, valor_min)
+    # Total vendas
+    vendas = listar_vendas()
+    total_vendas = sum(v['valor_total'] for v in vendas)
 
-@router.get("/export/json")
-def exportar_json():
-    return JSONResponse(content=listar_vendas())
+    # Produtos com estoque baixo
+    estoque = listar_estoque()
+    estoque_baixo = [p for p in estoque if p['quantidade'] < 5]
 
-@router.get("/export/csv")
-def exportar_csv():
-    temp = tempfile.NamedTemporaryFile(delete=False, suffix=".csv", mode="w", encoding="utf-8", newline="")
-    writer = csv.writer(temp)
-    writer.writerow(["ID", "Total", "Desconto", "Pagamento", "Data"])
-    for v in listar_vendas():
-        writer.writerow([v["id"], v["total"], v["desconto"], v["forma_pagamento"], v["data"]])
-    temp.close()
-    return FileResponse(temp.name, filename="vendas.csv", media_type="text/csv")
+    # Produtos mais vendidos
+    produto_contagem = {}
+    for v in vendas:
+        for item in v['itens']:
+            chave = item['nome']
+            produto_contagem[chave] = produto_contagem.get(chave, 0) + item['quantidade']
+
+    top_vendidos = sorted(produto_contagem.items(), key=lambda x: x[1], reverse=True)[:5]
+
+    return {
+        "caixa": caixa,
+        "total_vendas": total_vendas,
+        "itens_estoque_baixo": estoque_baixo,
+        "top_vendidos": [{"nome": nome, "quantidade": qtd} for nome, qtd in top_vendidos]
+    }
